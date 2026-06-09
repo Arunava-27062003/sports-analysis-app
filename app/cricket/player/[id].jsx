@@ -8,7 +8,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { findPlayerById } from '@/data/cricket';
 
@@ -37,25 +36,25 @@ export default function PlayerDetailScreen() {
     );
   }
 
-  const initials    = player.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-  const hasBatting  = player.batting.innings > 0 || player.batting.runs > 0;
-  const hasBowling  = player.bowling.innings > 0 || player.bowling.wickets > 0;
+  const initials   = player.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+  const hasBatting = player.batting.innings > 0 || player.batting.runs > 0;
+  const hasBowling = player.bowling.innings > 0 || player.bowling.wickets > 0;
 
-  function openStatsguru() {
-    const url = player.espnId
-      ? `https://stats.espncricinfo.com/ci/engine/player/${player.espnId}.html`
-      : `https://search.espncricinfo.com/?q=${encodeURIComponent(player.name)}`;
-    WebBrowser.openBrowserAsync(url);
-  }
+  // ── Derived batting stats ──────────────────────────────────────────────────
+  const notOuts = player.batting.average > 0 && player.batting.innings > 0
+    ? Math.max(0, Math.round(player.batting.innings - player.batting.runs / player.batting.average))
+    : 0;
+  const ballsFaced = player.batting.strikeRate > 0 && player.batting.runs > 0
+    ? Math.round(player.batting.runs * 100 / player.batting.strikeRate)
+    : 0;
 
-  function openStatsguruQuery(type) {
-    if (!player.espnId) { openStatsguru(); return; }
-    // class=1 Test, class=2 ODI, class=3 T20I, class=6 T20 franchise
-    const classMap = { ipl: 6, test: 1, odi: 2, t20i: 3 };
-    const cls = classMap[player.formatKey] ?? 3;
-    const url = `https://stats.espncricinfo.com/ci/engine/stats/index.html?player=${player.espnId}&class=${cls}&type=${type}`;
-    WebBrowser.openBrowserAsync(url);
-  }
+  // ── Derived bowling stats ──────────────────────────────────────────────────
+  const totalBalls = player.bowling.economy > 0 && player.bowling.wickets > 0
+    ? Math.round(6 * player.bowling.average * player.bowling.wickets / player.bowling.economy)
+    : 0;
+  const bowlingSR = player.bowling.economy > 0 && player.bowling.average > 0
+    ? (6 * player.bowling.average / player.bowling.economy).toFixed(1)
+    : '—';
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: '#0F2D1A' }]} edges={['top']}>
@@ -67,7 +66,6 @@ export default function PlayerDetailScreen() {
           <Text style={styles.backLabel}>Back</Text>
         </TouchableOpacity>
 
-        {/* Player hero inside green header */}
         <View style={styles.playerHero}>
           <View style={[styles.bigAvatar, { backgroundColor: player.teamColor }]}>
             <Text style={styles.bigAvatarText}>{initials}</Text>
@@ -92,81 +90,63 @@ export default function PlayerDetailScreen() {
 
       {/* ── Content ── */}
       <View style={[styles.contentArea, { backgroundColor: bg }]}>
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scroll}
-        >
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
 
-          {/* Batting stats */}
+          {/* ── Batting ── */}
           {hasBatting && (
             <View style={[styles.card, { backgroundColor: cardBg, borderColor }]}>
               <Text style={[styles.cardTitle, { color: textPrimary }]}>Batting</Text>
-              <View style={[styles.statGrid, { borderTopColor: borderColor }]}>
-                <StatBox label="Innings"     value={String(player.batting.innings)}                       textPrimary={textPrimary} textSecondary={textSecondary} />
-                <StatBox label="Runs"        value={String(player.batting.runs)}        accent="#F59E0B"  textPrimary={textPrimary} textSecondary={textSecondary} />
-                <StatBox label="Average"     value={player.batting.average.toFixed(1)}                   textPrimary={textPrimary} textSecondary={textSecondary} />
-                <StatBox label="Strike Rate" value={player.batting.strikeRate.toFixed(1)}                textPrimary={textPrimary} textSecondary={textSecondary} />
-                <StatBox label="100s"        value={String(player.batting.hundreds)}    accent="#10B981"  textPrimary={textPrimary} textSecondary={textSecondary} />
-                <StatBox label="50s"         value={String(player.batting.fifties)}                      textPrimary={textPrimary} textSecondary={textSecondary} />
-                <StatBox label="High Score"  value={String(player.batting.highScore)}                    textPrimary={textPrimary} textSecondary={textSecondary} />
-              </View>
+
+              <StatRow borderColor={borderColor}>
+                <Cell label="Inns"  value={String(player.batting.innings)}                  tp={textPrimary} ts={textSecondary} />
+                <Cell label="NO"    value={String(notOuts)}                                  tp={textPrimary} ts={textSecondary} />
+                <Cell label="Runs"  value={String(player.batting.runs)}  accent="#F59E0B"   tp={textPrimary} ts={textSecondary} />
+                <Cell label="HS"    value={String(player.batting.highScore)}                 tp={textPrimary} ts={textSecondary} />
+              </StatRow>
+
+              <StatRow borderColor={borderColor} topBorder>
+                <Cell label="Avg"  value={player.batting.average.toFixed(2)}                tp={textPrimary} ts={textSecondary} />
+                <Cell label="BF"   value={String(ballsFaced)}                               tp={textPrimary} ts={textSecondary} />
+                <Cell label="SR"   value={player.batting.strikeRate.toFixed(2)}              tp={textPrimary} ts={textSecondary} />
+                <Cell label=""     value=""                                                  tp={textPrimary} ts={textSecondary} />
+              </StatRow>
+
+              <StatRow borderColor={borderColor} topBorder>
+                <Cell label="100s" value={String(player.batting.hundreds)} accent="#10B981" tp={textPrimary} ts={textSecondary} />
+                <Cell label="50s"  value={String(player.batting.fifties)}                   tp={textPrimary} ts={textSecondary} />
+                <Cell label="0s"   value={String(player.batting.ducks ?? 0)}                tp={textPrimary} ts={textSecondary} />
+                <Cell label=""     value=""                                                  tp={textPrimary} ts={textSecondary} />
+              </StatRow>
             </View>
           )}
 
-          {/* Bowling stats */}
+          {/* ── Bowling ── */}
           {hasBowling && (
             <View style={[styles.card, { backgroundColor: cardBg, borderColor }]}>
               <Text style={[styles.cardTitle, { color: textPrimary }]}>Bowling</Text>
-              <View style={[styles.statGrid, { borderTopColor: borderColor }]}>
-                <StatBox label="Innings"  value={String(player.bowling.innings)}                              textPrimary={textPrimary} textSecondary={textSecondary} />
-                <StatBox label="Wickets"  value={String(player.bowling.wickets)}       accent="#EF4444"       textPrimary={textPrimary} textSecondary={textSecondary} />
-                <StatBox label="Economy"  value={player.bowling.economy > 0 ? player.bowling.economy.toFixed(2) : '—'} textPrimary={textPrimary} textSecondary={textSecondary} />
-                <StatBox label="Average"  value={player.bowling.average > 0 ? player.bowling.average.toFixed(1) : '—'} textPrimary={textPrimary} textSecondary={textSecondary} />
-                <StatBox label="Best"     value={player.bowling.bestBowling ?? '—'}                           textPrimary={textPrimary} textSecondary={textSecondary} />
-              </View>
+
+              <StatRow borderColor={borderColor}>
+                <Cell label="Inns"  value={String(player.bowling.innings)}                  tp={textPrimary} ts={textSecondary} />
+                <Cell label="Balls" value={totalBalls > 0 ? String(totalBalls) : '—'}       tp={textPrimary} ts={textSecondary} />
+                <Cell label="Runs"  value={player.bowling.wickets > 0 ? String(Math.round(player.bowling.average * player.bowling.wickets)) : '—'} tp={textPrimary} ts={textSecondary} />
+                <Cell label="Wkts"  value={String(player.bowling.wickets)} accent="#EF4444" tp={textPrimary} ts={textSecondary} />
+              </StatRow>
+
+              <StatRow borderColor={borderColor} topBorder>
+                <Cell label="BBI"  value={player.bowling.bestBowling ?? '—'}                tp={textPrimary} ts={textSecondary} />
+                <Cell label="Avg"  value={player.bowling.average > 0 ? player.bowling.average.toFixed(2) : '—'} tp={textPrimary} ts={textSecondary} />
+                <Cell label="Econ" value={player.bowling.economy > 0 ? player.bowling.economy.toFixed(2) : '—'} tp={textPrimary} ts={textSecondary} />
+                <Cell label="SR"   value={bowlingSR}                                         tp={textPrimary} ts={textSecondary} />
+              </StatRow>
+
+              <StatRow borderColor={borderColor} topBorder>
+                <Cell label="4W" value={String(player.bowling.fourWickets ?? 0)}             tp={textPrimary} ts={textSecondary} />
+                <Cell label="5W" value={String(player.bowling.fiveWickets ?? 0)}             tp={textPrimary} ts={textSecondary} />
+                <Cell label=""   value=""                                                     tp={textPrimary} ts={textSecondary} />
+                <Cell label=""   value=""                                                     tp={textPrimary} ts={textSecondary} />
+              </StatRow>
             </View>
           )}
-
-          {/* Statsguru */}
-          <View style={[styles.card, { backgroundColor: cardBg, borderColor }]}>
-            <Text style={[styles.cardTitle, { color: textPrimary }]}>Explore on Statsguru</Text>
-            <Text style={[styles.statsguruDesc, { color: textSecondary }]}>
-              Deep-dive into full career numbers — innings-by-innings logs, opposition splits, venue records, and more — powered by ESPNcricinfo Statsguru.
-            </Text>
-
-            <View style={styles.btnRow}>
-              {hasBatting && (
-                <TouchableOpacity
-                  style={[styles.statsBtn, { borderColor }]}
-                  onPress={() => openStatsguruQuery('batting')}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.statsBtnLabel, { color: textSecondary }]}>Batting</Text>
-                  <Text style={[styles.statsBtnPrimary, { color: textPrimary }]}>Stats ↗</Text>
-                </TouchableOpacity>
-              )}
-              {hasBowling && (
-                <TouchableOpacity
-                  style={[styles.statsBtn, { borderColor }]}
-                  onPress={() => openStatsguruQuery('bowling')}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.statsBtnLabel, { color: textSecondary }]}>Bowling</Text>
-                  <Text style={[styles.statsBtnPrimary, { color: textPrimary }]}>Stats ↗</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-
-            <TouchableOpacity
-              style={styles.profileBtn}
-              onPress={openStatsguru}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.profileBtnText}>
-                {player.espnId ? 'Full Player Profile on ESPNcricinfo ↗' : 'Search on ESPNcricinfo ↗'}
-              </Text>
-            </TouchableOpacity>
-          </View>
 
         </ScrollView>
       </View>
@@ -174,13 +154,27 @@ export default function PlayerDetailScreen() {
   );
 }
 
-// ── StatBox ──────────────────────────────────────────────────────────────────
+// ── StatRow ──────────────────────────────────────────────────────────────────
 
-function StatBox({ label, value, accent, textPrimary, textSecondary }) {
+function StatRow({ children, borderColor, topBorder }) {
   return (
-    <View style={styles.statBox}>
-      <Text style={[styles.statBoxValue, { color: accent ?? textPrimary }]}>{value}</Text>
-      <Text style={[styles.statBoxLabel, { color: textSecondary }]}>{label}</Text>
+    <View style={[
+      styles.statRow,
+      topBorder && { borderTopWidth: 1, borderTopColor: borderColor },
+    ]}>
+      {children}
+    </View>
+  );
+}
+
+// ── Cell ─────────────────────────────────────────────────────────────────────
+
+function Cell({ label, value, accent, tp, ts }) {
+  if (!label && !value) return <View style={styles.cell} />;
+  return (
+    <View style={styles.cell}>
+      <Text style={[styles.cellValue, { color: accent ?? tp }]}>{value}</Text>
+      <Text style={[styles.cellLabel, { color: ts }]}>{label}</Text>
     </View>
   );
 }
@@ -191,86 +185,34 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   contentArea: { flex: 1 },
 
-  // Header
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 4,
-    paddingBottom: 20,
-  },
+  header: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 20 },
   backBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 16 },
   backArrow: { color: '#FFFFFF', fontSize: 20, lineHeight: 24 },
   backLabel: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
 
-  // Player hero
   playerHero: { alignItems: 'center', gap: 6 },
   bigAvatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 72, height: 72, borderRadius: 36,
+    alignItems: 'center', justifyContent: 'center',
     marginBottom: 4,
-    borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderWidth: 3, borderColor: 'rgba(255,255,255,0.3)',
   },
   bigAvatarText: { color: '#FFFFFF', fontSize: 24, fontWeight: '800' },
   playerName: { color: '#FFFFFF', fontSize: 22, fontWeight: '800', letterSpacing: -0.3 },
   playerMeta: { color: 'rgba(255,255,255,0.7)', fontSize: 14 },
   pillRow: { flexDirection: 'row', gap: 8, marginTop: 4, flexWrap: 'wrap', justifyContent: 'center' },
-  pill: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
+  pill: { backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   pillText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600' },
 
   scroll: { padding: 14, paddingBottom: 36 },
   notFound: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   notFoundText: { fontSize: 16 },
 
-  // Cards
-  card: {
-    borderRadius: 14,
-    borderWidth: 1,
-    marginBottom: 12,
-    overflow: 'hidden',
-  },
+  card: { borderRadius: 14, borderWidth: 1, marginBottom: 12, overflow: 'hidden' },
   cardTitle: { fontSize: 15, fontWeight: '700', paddingHorizontal: 14, paddingTop: 12, paddingBottom: 10 },
 
-  // Stat grid
-  statGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    borderTopWidth: 1,
-  },
-  statBox: {
-    width: '33.33%',
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  statBoxValue: { fontSize: 22, fontWeight: '700' },
-  statBoxLabel: { fontSize: 11, marginTop: 3 },
-
-  // Statsguru
-  statsguruDesc: { fontSize: 13, lineHeight: 19, paddingHorizontal: 14, paddingBottom: 14 },
-  btnRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 14, marginBottom: 10 },
-  statsBtn: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  statsBtnLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 0.4 },
-  statsBtnPrimary: { fontSize: 15, fontWeight: '700', marginTop: 2 },
-  profileBtn: {
-    marginHorizontal: 14,
-    marginBottom: 14,
-    backgroundColor: '#0D3D6B',
-    borderRadius: 10,
-    paddingVertical: 13,
-    alignItems: 'center',
-  },
-  profileBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  statRow: { flexDirection: 'row' },
+  cell: { flex: 1, paddingVertical: 14, alignItems: 'center' },
+  cellValue: { fontSize: 20, fontWeight: '700' },
+  cellLabel: { fontSize: 11, marginTop: 3, fontWeight: '500' },
 });

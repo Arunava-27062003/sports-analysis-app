@@ -970,7 +970,60 @@ export const recentMatches = iplMatches;
 export const topPlayers = iplPlayers;
 export const standings = iplStandings;
 
-// ── ESPN Cricinfo player IDs (used for Statsguru deep links) ─────────────────
+// ── Extra player stats (ducks, 4W, 5W) ───────────────────────────────────────
+const PLAYER_EXTRA_STATS = {
+  // IPL 2026 batters
+  sooryavanshi:    { ducks: 1 },
+  gill_ipl26:      { ducks: 0 },
+  sudharsan_ipl26: { ducks: 0 },
+  kohli_ipl26:     { ducks: 0 },
+  klaasen_ipl26:   { ducks: 1 },
+  // IPL 2026 bowlers — T20 format, fiveWickets is extremely rare
+  rabada_ipl26:    { fiveWickets: 0, fourWickets: 3 },
+  bhuvi_ipl26:     { fiveWickets: 0, fourWickets: 4 },
+  archer_ipl26:    { fiveWickets: 0, fourWickets: 2 },
+  rashid_ipl26:    { fiveWickets: 0, fourWickets: 4 },
+  kamboj_ipl26:    { fiveWickets: 0, fourWickets: 2 },
+  // Test batters
+  root:            { ducks: 5 },
+  smith_s:         { ducks: 6 },
+  brook:           { ducks: 3 },
+  williamson:      { ducks: 4 },
+  jaiswal:         { ducks: 3 },
+  stokes:          { ducks: 5, fiveWickets: 5, fourWickets: 12 },
+  // Test bowlers
+  bumrah:          { fiveWickets:  6, fourWickets: 14 },
+  rabada:          { fiveWickets: 14, fourWickets: 22 },
+  henry:           { fiveWickets:  6, fourWickets:  8 },
+  cummins:         { fiveWickets: 12, fourWickets: 19 },
+  // ODI batters
+  kohli_odi:       { ducks: 12 },
+  rohit_odi:       { ducks: 14 },
+  babar_odi:       { ducks:  5 },
+  gill_odi:        { ducks:  3 },
+  // ODI bowlers
+  kuldeep:         { fiveWickets: 2, fourWickets:  4 },
+  rabada_odi:      { fiveWickets: 3, fourWickets:  8 },
+  boult_odi:       { fiveWickets: 3, fourWickets:  9 },
+  // T20I batters
+  sky_t20i:        { ducks: 3 },
+  abhishek:        { ducks: 2 },
+  kishan:          { ducks: 2 },
+  tilak:           { ducks: 2 },
+  klaasen:         { ducks: 4 },
+  head_t20i:       { ducks: 3 },
+  salt:            { ducks: 5 },
+  farhan:          { ducks: 3 },
+  // T20I bowlers
+  bumrah_t20i:     { fiveWickets: 0, fourWickets: 8 },
+  arshdeep:        { fiveWickets: 1, fourWickets: 6 },
+  rashid_t20i:     { fiveWickets: 3, fourWickets: 6 },
+  varun:           { fiveWickets: 0, fourWickets: 4 },
+  adil_rashid:     { fiveWickets: 0, fourWickets: 3 },
+  hasaranga:       { fiveWickets: 2, fourWickets: 6 },
+};
+
+// ── ESPN Cricinfo player IDs ──────────────────────────────────────────────────
 const ESPN_IDS = {
   // IPL 2026
   sooryavanshi:   1429551,
@@ -1026,11 +1079,22 @@ export function findMatchById(id) {
   return null;
 }
 
-// Find a player by ID across all formats; injects espnId and format metadata
+// Find a player by ID across all formats; injects espnId, format metadata, and extra stats
 export function findPlayerById(id) {
   for (const [formatKey, format] of Object.entries(cricketData)) {
     const p = format.players.find(player => player.id === id);
-    if (p) return { ...p, espnId: ESPN_IDS[id] ?? null, formatKey, formatLabel: format.label };
+    if (p) {
+      const extra = PLAYER_EXTRA_STATS[id] ?? {};
+      return {
+        ...p,
+        espnId:      ESPN_IDS[id] ?? null,
+        formatKey,
+        formatLabel: format.label,
+        batting:     { ...p.batting,  ducks:        extra.ducks        ?? 0 },
+        bowling:     { ...p.bowling,  fiveWickets:  extra.fiveWickets  ?? 0,
+                                      fourWickets:  extra.fourWickets  ?? 0 },
+      };
+    }
   }
   return null;
 }

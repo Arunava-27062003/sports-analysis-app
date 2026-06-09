@@ -22,7 +22,6 @@ const SETTINGS_SECTIONS = [
     title: 'ABOUT',
     items: [
       { icon: 'ℹ️', label: 'Version', value: '1.0.0' },
-      { icon: '⚡', label: 'Built with', value: 'Expo SDK 54' },
     ],
   },
 ];
@@ -52,7 +51,7 @@ export default function ProfileScreen() {
           </View>
           <View style={styles.avatarInfo}>
             <Text style={[styles.displayName, { color: textPrimary }]}>Sports Analyst</Text>
-            <Text style={[styles.displaySub, { color: textSecondary }]}>IPL 2025 Tracker</Text>
+            <Text style={[styles.displaySub, { color: textSecondary }]}>IPL 2026 Tracker</Text>
           </View>
         </View>
 
