@@ -1,6 +1,6 @@
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-const BACKEND_URL = (process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:3000').trim();
+const BACKEND_URL = (process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://backend-analysis.iem.edu.in').trim();
 const CRIC_API_KEY = (process.env.EXPO_PUBLIC_CRIC_API_KEY ?? '').trim();
 
 // ─── Backend fetch helper ─────────────────────────────────────────────────────
