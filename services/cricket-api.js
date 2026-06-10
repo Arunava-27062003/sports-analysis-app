@@ -10,7 +10,7 @@ async function backendGet(path, timeoutMs = 10000) {
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(`${BACKEND_URL}${path}`, { signal: controller.signal });
-    if (!res.ok) throw new Error(`Backend HTTP ${res.status}`);
+    if (!res.ok) throw new Error('Unable to load data');
     return res.json();
   } finally {
     clearTimeout(timer);
@@ -77,7 +77,7 @@ async function fetchLiveFromCricApi() {
       `https://api.cricapi.com/v1/currentMatches?apikey=${CRIC_API_KEY}&offset=0`,
       { signal: controller.signal }
     );
-    if (!res.ok) throw new Error(`CricAPI HTTP ${res.status}`);
+    if (!res.ok) throw new Error('Unable to load data');
     const json = await res.json();
     if (json.status !== 'success') return [];
     return (json.data ?? [])
@@ -156,4 +156,12 @@ export async function checkBackendHealth() {
   } catch {
     return false;
   }
+}
+
+// ─── Search (matches + players) ───────────────────────────────────────────────
+export async function searchCricket(query, type = 'all') {
+  if (!query || query.trim().length < 2) return { matches: [], players: [] };
+  const params = new URLSearchParams({ q: query.trim(), type, limit: '20' });
+  const data = await backendGet(`/api/cricket/search?${params}`);
+  return { matches: data.matches ?? [], players: data.players ?? [] };
 }

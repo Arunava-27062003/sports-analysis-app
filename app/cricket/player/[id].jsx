@@ -76,12 +76,6 @@ export default function PlayerDetailScreen() {
       <View style={[styles.contentArea, { backgroundColor: bg }]}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
 
-          <View style={[styles.noticeCard, { backgroundColor: cardBg, borderColor }]}>
-            <Text style={[styles.noticeText, { color: textSecondary }]}>
-              Showing match performance stats. Full career stats require a higher API tier.
-            </Text>
-          </View>
-
           {/* Batting */}
           {hasBatting && (
             <View style={[styles.card, { backgroundColor: cardBg, borderColor }]}>
@@ -183,9 +177,6 @@ const styles = StyleSheet.create({
   pillText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600' },
 
   scroll: { padding: 14, paddingBottom: 36 },
-
-  noticeCard: { borderRadius: 12, borderWidth: 1, padding: 14, marginBottom: 12 },
-  noticeText: { fontSize: 12, fontStyle: 'italic', textAlign: 'center', lineHeight: 18 },
 
   card: { borderRadius: 14, borderWidth: 1, marginBottom: 12, overflow: 'hidden' },
   cardTitle: { fontSize: 15, fontWeight: '700', paddingHorizontal: 14, paddingTop: 12, paddingBottom: 10 },

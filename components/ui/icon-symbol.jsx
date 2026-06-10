@@ -7,6 +7,7 @@ const MAPPING = {
   'chevron.right': 'chevron-right',
   'sportscourt.fill': 'sports-cricket',
   'person.fill': 'person',
+  'magnifyingglass': 'search',
 };
 
 export function IconSymbol({ name, size = 24, color, style }) {

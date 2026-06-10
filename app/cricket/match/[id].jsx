@@ -130,7 +130,7 @@ export default function MatchDetailScreen() {
               : (
                 <View style={[styles.card, { backgroundColor: cardBg, borderColor }]}>
                   <Text style={[styles.noScorecardText, { color: textSecondary }]}>
-                    Detailed scorecard not available on the free plan.
+                    Scorecard not available for this match.
                   </Text>
                 </View>
               )

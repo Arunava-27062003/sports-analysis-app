@@ -18,7 +18,7 @@ export function useCricketData(fetchFn, deps = []) {
       const result = await fetchFn();
       setData(result);
     } catch (e) {
-      setError(e.message ?? 'Failed to load data');
+      setError('Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }

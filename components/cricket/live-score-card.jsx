@@ -157,8 +157,8 @@ export function LiveSection({ matches, loading, error, refresh }) {
       {/* Error */}
       {error && !loading && (
         <View style={[styles.emptyCard, { backgroundColor: cardBg, borderColor }]}>
-          <Text style={[styles.emptyBody, { color: '#EF4444' }]}>
-            Could not fetch live scores · {error}
+          <Text style={[styles.emptyBody, { color: textSecondary }]}>
+            Live scores unavailable
           </Text>
         </View>
       )}

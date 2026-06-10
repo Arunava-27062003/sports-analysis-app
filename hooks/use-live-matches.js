@@ -16,7 +16,7 @@ export function useLiveMatches() {
       const data = await getLiveMatches();
       if (mounted.current) setMatches(data);
     } catch (e) {
-      if (mounted.current) setError(e.message ?? 'Failed to fetch live scores');
+      if (mounted.current) setMatches([]);
     } finally {
       if (mounted.current) setLoading(false);
     }
