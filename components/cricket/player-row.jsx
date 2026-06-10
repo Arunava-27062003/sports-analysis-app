@@ -16,15 +16,42 @@ export function PlayerRow({ player, rank, mode, isLast = false }) {
   const textSecondary = isDark ? '#9BA1A6' : '#687076';
   const rankColor = rank <= 3 ? '#F9A825' : textSecondary;
 
+  function handlePress() {
+    router.push({
+      pathname: `/cricket/player/${player.id}`,
+      params: {
+        name:        player.name,
+        teamShort:   player.teamShort,
+        teamColor:   player.teamColor || '',
+        role:        player.role || '',
+        // batting
+        battingRuns:        player.batting.runs ?? 0,
+        battingBalls:       player.batting.balls ?? 0,
+        battingAverage:     player.batting.average ?? 0,
+        battingStrikeRate:  player.batting.strikeRate ?? 0,
+        battingHighScore:   player.batting.highScore ?? 0,
+        battingHundreds:    player.batting.hundreds ?? 0,
+        battingFifties:     player.batting.fifties ?? 0,
+        battingInnings:     player.batting.innings ?? 0,
+        // bowling
+        bowlingWickets:     player.bowling.wickets ?? 0,
+        bowlingEconomy:     player.bowling.economy ?? 0,
+        bowlingAverage:     player.bowling.average ?? 0,
+        bowlingBest:        player.bowling.bestBowling || '',
+        bowlingInnings:     player.bowling.innings ?? 0,
+      },
+    });
+  }
+
   return (
     <TouchableOpacity
       activeOpacity={0.75}
-      onPress={() => router.push(`/cricket/player/${player.id}`)}
+      onPress={handlePress}
       style={[styles.row, !isLast && { borderBottomWidth: 1, borderBottomColor: borderColor }]}
     >
       <Text style={[styles.rank, { color: rankColor }]}>{rank}</Text>
 
-      <View style={[styles.avatar, { backgroundColor: player.teamColor }]}>
+      <View style={[styles.avatar, { backgroundColor: player.teamColor || '#555' }]}>
         <Text style={styles.avatarText}>{getInitials(player.name)}</Text>
       </View>
 
@@ -37,14 +64,14 @@ export function PlayerRow({ player, rank, mode, isLast = false }) {
         {mode === 'batting' ? (
           <>
             <StatCell value={String(player.batting.runs)} label="Runs" textPrimary={textPrimary} textSecondary={textSecondary} />
-            <StatCell value={player.batting.average.toFixed(1)} label="Avg" textPrimary={textPrimary} textSecondary={textSecondary} />
-            <StatCell value={player.batting.strikeRate.toFixed(1)} label="SR" textPrimary={textPrimary} textSecondary={textSecondary} />
+            <StatCell value={(player.batting.average || 0).toFixed(1)} label="Avg" textPrimary={textPrimary} textSecondary={textSecondary} />
+            <StatCell value={(player.batting.strikeRate || 0).toFixed(1)} label="SR" textPrimary={textPrimary} textSecondary={textSecondary} />
           </>
         ) : (
           <>
             <StatCell value={String(player.bowling.wickets)} label="Wkts" textPrimary={textPrimary} textSecondary={textSecondary} />
-            <StatCell value={player.bowling.economy.toFixed(1)} label="Econ" textPrimary={textPrimary} textSecondary={textSecondary} />
-            <StatCell value={player.bowling.average.toFixed(1)} label="Avg" textPrimary={textPrimary} textSecondary={textSecondary} />
+            <StatCell value={(player.bowling.economy || 0).toFixed(1)} label="Econ" textPrimary={textPrimary} textSecondary={textSecondary} />
+            <StatCell value={(player.bowling.average || 0).toFixed(1)} label="Avg" textPrimary={textPrimary} textSecondary={textSecondary} />
           </>
         )}
       </View>

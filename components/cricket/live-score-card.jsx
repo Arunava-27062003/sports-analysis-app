@@ -44,6 +44,8 @@ function parseInningTeam(inningStr) {
 }
 
 // ── LiveScoreCard ──────────────────────────────────────────────────────────────
+// Expects the backend-transformed match shape:
+// { id, title, format, statusText, venue, team1: {name,short,color,score}, team2: {...} }
 
 export function LiveScoreCard({ match }) {
   const colorScheme = useColorScheme();
@@ -55,32 +57,10 @@ export function LiveScoreCard({ match }) {
   const textSecondary = isDark ? '#9BA1A6' : '#687076';
   const innerBg       = isDark ? '#13171D' : '#F7F9FC';
 
-  const {
-    name      = '',
-    status    = '',
-    venue     = '',
-    score     = [],
-    matchType = '',
-    teams     = [],
-  } = match;
+  const { title = '', format = '', statusText = '', venue = '', team1, team2 } = match;
+  const formatLabel = FORMAT_LABELS[format.toLowerCase()] ?? format.toUpperCase();
 
-  const formatLabel = FORMAT_LABELS[matchType.toLowerCase()] ?? matchType.toUpperCase();
-
-  // Build innings rows from score array
-  const inningsRows = score.map(s => ({
-    team:    parseInningTeam(s.inning),
-    inning:  s.inning.match(/\d+$/)?.[0] ?? '1',
-    runs:    s.r ?? 0,
-    wickets: s.w ?? 0,
-    overs:   s.o ?? 0,
-  }));
-
-  // Teams that haven't batted yet
-  const battedTeams = new Set(inningsRows.map(r => r.team));
-  const yetToBat    = teams.filter(t => !battedTeams.has(t));
-
-  // For Test matches show inning number in label
-  const showInningNum = inningsRows.length > 2;
+  const teams = [team1, team2].filter(Boolean);
 
   return (
     <View style={[styles.card, { backgroundColor: cardBg, borderColor }]}>
@@ -93,7 +73,7 @@ export function LiveScoreCard({ match }) {
         </View>
         <View style={styles.headerInfo}>
           <Text style={[styles.matchName, { color: textPrimary }]} numberOfLines={1}>
-            {name}
+            {title}
           </Text>
           <Text style={[styles.matchMeta, { color: textSecondary }]} numberOfLines={1}>
             {formatLabel}{venue ? ` · ${venue}` : ''}
@@ -106,48 +86,27 @@ export function LiveScoreCard({ match }) {
         borderTopColor: borderColor, borderBottomColor: borderColor,
         backgroundColor: innerBg,
       }]}>
-        {inningsRows.map((row, i) => (
+        {teams.map((team, i) => (
           <View
-            key={i}
-            style={[
-              styles.inningsRow,
-              i > 0 && { borderTopWidth: 1, borderTopColor: borderColor },
-            ]}
+            key={team.id ?? i}
+            style={[styles.inningsRow, i > 0 && { borderTopWidth: 1, borderTopColor: borderColor }]}
           >
-            <View style={[styles.teamBadge, { backgroundColor: teamColor(row.team) }]}>
-              <Text style={styles.teamBadgeText}>{teamShort(row.team)}</Text>
+            <View style={[styles.teamBadge, { backgroundColor: team.color || teamColor(team.name) }]}>
+              <Text style={styles.teamBadgeText}>{team.short || teamShort(team.name)}</Text>
             </View>
             <Text style={[styles.teamLabel, { color: textSecondary }]}>
-              {teamShort(row.team)}{showInningNum ? ` (Inn ${row.inning})` : ''}
+              {team.short || teamShort(team.name)}
             </Text>
-            <Text style={[styles.inningsScore, { color: textPrimary }]}>
-              {row.runs}/{row.wickets}{' '}
-              <Text style={[styles.overs, { color: textSecondary }]}>
-                ({row.overs} ov)
+            {team.score ? (
+              <Text style={[styles.inningsScore, { color: textPrimary }]}>
+                {team.score.runs}/{team.score.wickets}{' '}
+                <Text style={[styles.overs, { color: textSecondary }]}>
+                  ({team.score.overs} ov)
+                </Text>
               </Text>
-            </Text>
-          </View>
-        ))}
-
-        {yetToBat.map((team, i) => (
-          <View
-            key={`ytb-${i}`}
-            style={[
-              styles.inningsRow,
-              (inningsRows.length > 0 || i > 0) && {
-                borderTopWidth: 1, borderTopColor: borderColor,
-              },
-            ]}
-          >
-            <View style={[styles.teamBadge, { backgroundColor: teamColor(team) }]}>
-              <Text style={styles.teamBadgeText}>{teamShort(team)}</Text>
-            </View>
-            <Text style={[styles.teamLabel, { color: textSecondary }]}>
-              {teamShort(team)}
-            </Text>
-            <Text style={[styles.inningsScore, { color: textSecondary }]}>
-              Yet to bat
-            </Text>
+            ) : (
+              <Text style={[styles.inningsScore, { color: textSecondary }]}>Yet to bat</Text>
+            )}
           </View>
         ))}
       </View>
@@ -155,7 +114,7 @@ export function LiveScoreCard({ match }) {
       {/* Status */}
       <View style={styles.statusRow}>
         <Text style={[styles.statusText, { color: textPrimary }]} numberOfLines={3}>
-          {status}
+          {statusText}
         </Text>
       </View>
 
@@ -165,7 +124,7 @@ export function LiveScoreCard({ match }) {
 
 // ── LiveSection ────────────────────────────────────────────────────────────────
 
-export function LiveSection({ matches, loading, error, refresh, configured }) {
+export function LiveSection({ matches, loading, error, refresh }) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
@@ -183,40 +142,20 @@ export function LiveSection({ matches, loading, error, refresh, configured }) {
           <View style={styles.sectionLiveDot} />
           <Text style={[styles.sectionTitle, { color: textPrimary }]}>Live Now</Text>
         </View>
-        {configured && (
-          <TouchableOpacity
-            onPress={refresh}
-            disabled={loading}
-            style={styles.refreshBtn}
-          >
-            {loading
-              ? <ActivityIndicator size="small" color="#4ADE80" />
-              : <Text style={styles.refreshText}>↻ Refresh</Text>
-            }
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity
+          onPress={refresh}
+          disabled={loading}
+          style={styles.refreshBtn}
+        >
+          {loading
+            ? <ActivityIndicator size="small" color="#4ADE80" />
+            : <Text style={styles.refreshText}>↻ Refresh</Text>
+          }
+        </TouchableOpacity>
       </View>
 
-      {/* No API key */}
-      {!configured && (
-        <View style={[styles.emptyCard, { backgroundColor: cardBg, borderColor }]}>
-          <Text style={[styles.emptyTitle, { color: textPrimary }]}>
-            Real-time scores not configured
-          </Text>
-          <Text style={[styles.emptyBody, { color: textSecondary }]}>
-            Add your free CricAPI key to{' '}
-            <Text style={{ fontWeight: '700' }}>.env</Text>
-            {' '}as{' '}
-            <Text style={{ fontWeight: '700' }}>EXPO_PUBLIC_CRIC_API_KEY</Text>
-            {' '}then restart the dev server.{'\n'}Get a free key at{' '}
-            <Text style={{ fontWeight: '700' }}>cricapi.com</Text>
-            {' '}(100 calls / day).
-          </Text>
-        </View>
-      )}
-
       {/* Error */}
-      {configured && error && !loading && (
+      {error && !loading && (
         <View style={[styles.emptyCard, { backgroundColor: cardBg, borderColor }]}>
           <Text style={[styles.emptyBody, { color: '#EF4444' }]}>
             Could not fetch live scores · {error}
@@ -225,7 +164,7 @@ export function LiveSection({ matches, loading, error, refresh, configured }) {
       )}
 
       {/* No live matches */}
-      {configured && !loading && !error && matches.length === 0 && (
+      {!loading && !error && matches.length === 0 && (
         <View style={[styles.emptyCard, { backgroundColor: cardBg, borderColor }]}>
           <Text style={[styles.emptyBody, { color: textSecondary }]}>
             No matches live right now

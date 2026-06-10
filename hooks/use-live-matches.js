@@ -1,33 +1,36 @@
-import { useState, useEffect, useCallback } from 'react';
-import { fetchCurrentLiveMatches, isApiConfigured } from '@/services/cricket-api';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { getLiveMatches } from '@/services/cricket-api';
 
-const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes (~288 calls/day max)
+const POLL_INTERVAL_MS = 60 * 1000; // 1 minute — backend caches for 60s anyway
 
 export function useLiveMatches() {
-  const configured = isApiConfigured();
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState(null);
+  const [error, setError] = useState(null);
+  const mounted = useRef(true);
 
   const refresh = useCallback(async () => {
-    if (!configured) return;
     setLoading(true);
     setError(null);
     try {
-      setMatches(await fetchCurrentLiveMatches());
+      const data = await getLiveMatches();
+      if (mounted.current) setMatches(data);
     } catch (e) {
-      setError(e.message ?? 'Failed to fetch live scores');
+      if (mounted.current) setError(e.message ?? 'Failed to fetch live scores');
     } finally {
-      setLoading(false);
+      if (mounted.current) setLoading(false);
     }
-  }, [configured]);
+  }, []);
 
   useEffect(() => {
+    mounted.current = true;
     refresh();
-    if (!configured) return;
     const id = setInterval(refresh, POLL_INTERVAL_MS);
-    return () => clearInterval(id);
-  }, [refresh, configured]);
+    return () => {
+      mounted.current = false;
+      clearInterval(id);
+    };
+  }, [refresh]);
 
-  return { matches, loading, error, refresh, configured };
+  return { matches, loading, error, refresh };
 }
