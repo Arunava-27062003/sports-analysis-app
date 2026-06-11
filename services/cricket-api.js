@@ -158,6 +158,39 @@ export async function checkBackendHealth() {
   }
 }
 
+// ─── H2H (head-to-head between two teams) ────────────────────────────────────
+
+export async function getH2H(team1, team2, format = null) {
+  const params = new URLSearchParams({ team1, team2 });
+  if (format && format !== 'ALL') params.set('format', format.toLowerCase());
+  const data = await backendGet(`/api/cricket/stats/h2h?${params}`);
+  return data;
+}
+
+// ─── Player stats ─────────────────────────────────────────────────────────────
+
+export async function getPlayerStats(name, format = null) {
+  const params = format && format !== 'ALL'
+    ? `?format=${encodeURIComponent(format.toLowerCase())}`
+    : '';
+  const data = await backendGet(
+    `/api/cricket/stats/player/${encodeURIComponent(name)}${params}`
+  );
+  return data;
+}
+
+// ─── Team stats (matches played, won, lost, win rate) ─────────────────────────
+
+export async function getTeamStats(teamName, format = null) {
+  const params = format && format !== 'ALL'
+    ? `?format=${encodeURIComponent(format.toLowerCase())}`
+    : '';
+  const data = await backendGet(
+    `/api/cricket/stats/team/${encodeURIComponent(teamName)}${params}`
+  );
+  return data;
+}
+
 // ─── Search (matches + players) ───────────────────────────────────────────────
 export async function searchCricket(query, type = 'all') {
   if (!query || query.trim().length < 2) return { matches: [], players: [] };

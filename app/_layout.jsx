@@ -20,6 +20,7 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="cricket/match/[id]" options={{ headerShown: false }} />
           <Stack.Screen name="cricket/player/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="cricket/team/[name]" options={{ headerShown: false }} />
         </Stack>
         <StatusBar style="auto" />
       </ThemeProvider>

@@ -1,43 +1,47 @@
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { MatchCard } from '@/components/cricket/match-card';
 import { PlayerRow } from '@/components/cricket/player-row';
 import { LiveSection } from '@/components/cricket/live-score-card';
 import { useLiveMatches } from '@/hooks/use-live-matches';
 import { useCricketData } from '@/hooks/use-cricket-data';
-import { getRecentMatches, getTopPlayers, getCricketRankings } from '@/services/cricket-api';
+import {
+  getRecentMatches, getUpcomingMatches, getTopPlayers, getCricketRankings,
+} from '@/services/cricket-api';
+import { buildTeamList, getTeamColor } from '@/constants/teams';
+
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const FORMATS = [
-  { id: 'ipl',  label: 'IPL'      },
-  { id: 't20i', label: 'T20I'     },
-  { id: 'odi',  label: 'ODI'      },
-  { id: 'test', label: 'Test'     },
+  { id: 'ipl',  label: 'IPL'         },
+  { id: 't20i', label: 'T20I'        },
+  { id: 'odi',  label: 'ODI'         },
+  { id: 'test', label: 'Test'        },
   { id: 't20',  label: 'T20 Leagues' },
 ];
 
 const FORMAT_META = {
-  ipl:  { subtitle: 'Indian Premier League',         teamsLabel: 'ICC Rankings', hasRankings: false },
-  test: { subtitle: 'Test Cricket',                  teamsLabel: 'ICC Rankings', hasRankings: true  },
-  odi:  { subtitle: 'One Day Internationals',        teamsLabel: 'ICC Rankings', hasRankings: true  },
-  t20i: { subtitle: 'T20 Internationals',            teamsLabel: 'ICC Rankings', hasRankings: true  },
-  t20:  { subtitle: 'T20 Leagues (BBL, PSL, CPL…)', teamsLabel: 'Top Performers', hasRankings: false },
+  ipl:  { subtitle: 'Indian Premier League',         hasRankings: false, rankLabel: null   },
+  test: { subtitle: 'Test Cricket',                  hasRankings: true,  rankLabel: 'test' },
+  odi:  { subtitle: 'One Day Internationals',        hasRankings: true,  rankLabel: 'odi'  },
+  t20i: { subtitle: 'T20 Internationals',            hasRankings: true,  rankLabel: 't20i' },
+  t20:  { subtitle: 'T20 Leagues (BBL, PSL, CPL…)', hasRankings: false, rankLabel: null   },
 };
 
 const CONTENT_TABS = [
-  { id: 'overview', label: 'Overview'  },
-  { id: 'matches',  label: 'Matches'   },
-  { id: 'players',  label: 'Players'   },
-  { id: 'teams',    label: 'Rankings'  },
+  { id: 'overview',  label: 'Overview'  },
+  { id: 'matches',   label: 'Matches'   },
+  { id: 'players',   label: 'Players'   },
+  { id: 'teams',     label: 'Teams'     },
+  { id: 'rankings',  label: 'Rankings'  },
 ];
+
+// ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function CricketScreen() {
   const [activeFormat, setActiveFormat] = useState('ipl');
@@ -61,11 +65,15 @@ export default function CricketScreen() {
   } = useCricketData(() => getRecentMatches(activeFormat), [activeFormat]);
 
   const {
+    data: upcomingMatches, loading: upcomingLoading, error: upcomingError, reload: reloadUpcoming,
+  } = useCricketData(() => getUpcomingMatches(activeFormat), [activeFormat]);
+
+  const {
     data: playersData, loading: playersLoading, error: playersError, reload: reloadPlayers,
   } = useCricketData(() => getTopPlayers(activeFormat), [activeFormat]);
 
   const {
-    data: rankingsData, loading: rankingsLoading, error: rankingsError, reload: reloadRankings,
+    data: rankingsData, loading: rankingsLoading,
   } = useCricketData(
     () => meta.hasRankings
       ? getCricketRankings(activeFormat)
@@ -79,12 +87,14 @@ export default function CricketScreen() {
     setPlayerMode('batting');
   }
 
-  const safeMatches  = recentMatches ?? [];
-  const safePlayers  = playersData   ?? { batting: [], bowling: [] };
-  const safeRankings = rankingsData  ?? { format: activeFormat, teams: [] };
+  const safeMatches   = recentMatches   ?? [];
+  const safeUpcoming  = upcomingMatches ?? [];
+  const safePlayers   = playersData     ?? { batting: [], bowling: [] };
+  const safeRankings  = rankingsData    ?? { teams: [] };
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: '#0F2D1A' }]} edges={['top']}>
+
       {/* Header */}
       <View style={styles.header}>
         <View>
@@ -142,9 +152,10 @@ export default function CricketScreen() {
         </ScrollView>
       </View>
 
-      {/* Content area */}
+      {/* Content */}
       <View style={[styles.contentArea, { backgroundColor: bg }]}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} key={activeFormat}>
+
           {activeTab === 'overview' && (
             <OverviewTab
               liveApi={liveApi}
@@ -156,7 +167,6 @@ export default function CricketScreen() {
               standingsPreview={(safeRankings.teams ?? []).slice(0, 4)}
               rankingsLoading={rankingsLoading}
               hasRankings={meta.hasRankings}
-              teamsLabel={meta.teamsLabel}
               isDark={isDark}
               cardBg={cardBg}
               borderColor={borderColor}
@@ -167,10 +177,17 @@ export default function CricketScreen() {
 
           {activeTab === 'matches' && (
             <MatchesTab
-              matches={safeMatches}
-              loading={matchesLoading}
-              error={matchesError}
-              onReload={reloadMatches}
+              recentMatches={safeMatches}
+              upcomingMatches={safeUpcoming}
+              recentLoading={matchesLoading}
+              upcomingLoading={upcomingLoading}
+              recentError={matchesError}
+              upcomingError={upcomingError}
+              reloadRecent={reloadMatches}
+              reloadUpcoming={reloadUpcoming}
+              isDark={isDark}
+              cardBg={cardBg}
+              borderColor={borderColor}
               textPrimary={textPrimary}
               textSecondary={textSecondary}
             />
@@ -193,13 +210,8 @@ export default function CricketScreen() {
           )}
 
           {activeTab === 'teams' && (
-            <TeamsTab
-              rankings={safeRankings}
-              loading={rankingsLoading}
-              error={rankingsError}
-              onReload={reloadRankings}
-              hasRankings={meta.hasRankings}
-              teamsLabel={meta.teamsLabel}
+            <TeamsGridTab
+              activeFormat={activeFormat}
               isDark={isDark}
               cardBg={cardBg}
               borderColor={borderColor}
@@ -207,6 +219,17 @@ export default function CricketScreen() {
               textSecondary={textSecondary}
             />
           )}
+
+          {activeTab === 'rankings' && (
+            <RankingsTab
+              isDark={isDark}
+              cardBg={cardBg}
+              borderColor={borderColor}
+              textPrimary={textPrimary}
+              textSecondary={textSecondary}
+            />
+          )}
+
         </ScrollView>
       </View>
     </SafeAreaView>
@@ -217,7 +240,7 @@ export default function CricketScreen() {
 
 function OverviewTab({
   liveApi, latestMatch, matchesLoading, topBatsman, topBowler, playersLoading,
-  standingsPreview, rankingsLoading, hasRankings, teamsLabel,
+  standingsPreview, rankingsLoading, hasRankings,
   isDark, cardBg, borderColor, textPrimary, textSecondary,
 }) {
   return (
@@ -246,10 +269,7 @@ function OverviewTab({
               statLabel="runs"
               subStat={`Avg ${(topBatsman.batting.average || 0).toFixed(1)} · SR ${(topBatsman.batting.strikeRate || 0).toFixed(1)}`}
               accentColor="#F59E0B"
-              cardBg={cardBg}
-              borderColor={borderColor}
-              textPrimary={textPrimary}
-              textSecondary={textSecondary}
+              cardBg={cardBg} borderColor={borderColor} textPrimary={textPrimary} textSecondary={textSecondary}
             />
           )}
           {topBowler && (
@@ -260,10 +280,7 @@ function OverviewTab({
               statLabel="wickets"
               subStat={`Avg ${(topBowler.bowling.average || 0).toFixed(1)} · Eco ${(topBowler.bowling.economy || 0).toFixed(1)}`}
               accentColor="#EF4444"
-              cardBg={cardBg}
-              borderColor={borderColor}
-              textPrimary={textPrimary}
-              textSecondary={textSecondary}
+              cardBg={cardBg} borderColor={borderColor} textPrimary={textPrimary} textSecondary={textSecondary}
             />
           )}
         </View>
@@ -273,7 +290,7 @@ function OverviewTab({
 
       {hasRankings && (
         <>
-          <Text style={[styles.sectionTitle, { color: textPrimary }]}>{teamsLabel}</Text>
+          <Text style={[styles.sectionTitle, { color: textPrimary }]}>ICC Rankings</Text>
           {rankingsLoading ? (
             <LoadingCard cardBg={cardBg} borderColor={borderColor} />
           ) : standingsPreview.length > 0 ? (
@@ -302,14 +319,54 @@ function OverviewTab({
 
 // ─── Matches Tab ──────────────────────────────────────────────────────────────
 
-function MatchesTab({ matches, loading, error, onReload, textPrimary, textSecondary }) {
-  if (loading) return <LoadingPlaceholder />;
-  if (error) return <ErrorPlaceholder error={error} onRetry={onReload} textSecondary={textSecondary} />;
-  if (!matches.length) return <EmptyPlaceholder message="No recent matches found" textSecondary={textSecondary} />;
+function MatchesTab({
+  recentMatches, upcomingMatches, recentLoading, upcomingLoading,
+  recentError, upcomingError, reloadRecent, reloadUpcoming,
+  isDark, cardBg, borderColor, textPrimary, textSecondary,
+}) {
+  const [view, setView] = useState('recent');
+
+  const matches = view === 'recent' ? recentMatches : upcomingMatches;
+  const loading = view === 'recent' ? recentLoading : upcomingLoading;
+  const error   = view === 'recent' ? recentError   : upcomingError;
+  const onReload = view === 'recent' ? reloadRecent : reloadUpcoming;
+
   return (
     <View>
-      <Text style={[styles.sectionTitle, { color: textPrimary }]}>Recent Matches</Text>
-      {matches.map(match => <MatchCard key={match.id} match={match} />)}
+      <View style={styles.viewToggleRow}>
+        {['recent', 'upcoming'].map(v => {
+          const active = view === v;
+          return (
+            <TouchableOpacity
+              key={v}
+              onPress={() => setView(v)}
+              style={[styles.viewTogglePill, {
+                backgroundColor: active ? '#1D5C33' : cardBg,
+                borderColor: active ? '#1D5C33' : borderColor,
+              }]}
+            >
+              <Text style={[styles.viewToggleText, { color: active ? '#FFFFFF' : textSecondary }]}>
+                {v.charAt(0).toUpperCase() + v.slice(1)}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {loading ? (
+        <LoadingPlaceholder />
+      ) : error ? (
+        <ErrorPlaceholder error={error} onRetry={onReload} textSecondary={textSecondary} />
+      ) : matches.length === 0 ? (
+        <EmptyPlaceholder message={`No ${view} matches found`} textSecondary={textSecondary} />
+      ) : (
+        <View>
+          <Text style={[styles.sectionTitle, { color: textPrimary }]}>
+            {view === 'recent' ? 'Recent Matches' : 'Upcoming Matches'}
+          </Text>
+          {matches.map(match => <MatchCard key={match.id} match={match} />)}
+        </View>
+      )}
     </View>
   );
 }
@@ -318,17 +375,15 @@ function MatchesTab({ matches, loading, error, onReload, textPrimary, textSecond
 
 function PlayersTab({ playersData, loading, error, onReload, mode, onModeChange, isDark, cardBg, borderColor, textPrimary, textSecondary }) {
   if (loading) return <LoadingPlaceholder />;
-  if (error) return <ErrorPlaceholder error={error} onRetry={onReload} textSecondary={textSecondary} />;
+  if (error)   return <ErrorPlaceholder error={error} onRetry={onReload} textSecondary={textSecondary} />;
 
-  const players = mode === 'batting' ? (playersData.batting || []) : (playersData.bowling || []);
-  const toggleBg = isDark ? '#1A1F26' : '#F0F2F5';
+  const players   = mode === 'batting' ? (playersData.batting || []) : (playersData.bowling || []);
+  const toggleBg  = isDark ? '#1A1F26' : '#F0F2F5';
 
   return (
     <View>
       {playersData.isMatchPerformance && playersData.matchTitle ? (
-        <Text style={[styles.matchSourceLabel, { color: textSecondary }]}>
-          From: {playersData.matchTitle}
-        </Text>
+        <Text style={[styles.matchSourceLabel, { color: textSecondary }]}>From: {playersData.matchTitle}</Text>
       ) : null}
 
       <View style={[styles.toggleWrapper, { backgroundColor: toggleBg, borderColor }]}>
@@ -361,15 +416,9 @@ function PlayersTab({ playersData, loading, error, onReload, mode, onModeChange,
       </View>
 
       {players.length > 0 ? (
-        <View style={[styles.card, { backgroundColor: cardBg, borderColor }]}>
+        <View style={[styles.card, { backgroundColor: cardBg, borderColor, marginTop: 0, borderTopLeftRadius: 0, borderTopRightRadius: 0 }]}>
           {players.map((player, index) => (
-            <PlayerRow
-              key={player.id}
-              player={player}
-              rank={index + 1}
-              mode={mode}
-              isLast={index === players.length - 1}
-            />
+            <PlayerRow key={player.id} player={player} rank={index + 1} mode={mode} isLast={index === players.length - 1} />
           ))}
         </View>
       ) : (
@@ -379,38 +428,108 @@ function PlayersTab({ playersData, loading, error, onReload, mode, onModeChange,
   );
 }
 
-// ─── Teams / Rankings Tab ─────────────────────────────────────────────────────
+// ─── Teams Grid Tab ───────────────────────────────────────────────────────────
 
-function TeamsTab({ rankings, loading, error, onReload, hasRankings, teamsLabel, isDark, cardBg, borderColor, textPrimary, textSecondary }) {
-  if (!hasRankings) {
-    return (
-      <View style={[styles.emptyBox, { backgroundColor: cardBg, borderColor }]}>
-        <Text style={[styles.emptyText, { color: textSecondary }]}>
-          ICC Rankings are available for Test, ODI, and T20I formats only.
-        </Text>
-      </View>
-    );
-  }
-  if (loading) return <LoadingPlaceholder />;
-  if (error) return <ErrorPlaceholder error={error} onRetry={onReload} textSecondary={textSecondary} />;
-  if (!(rankings.teams ?? []).length) return <EmptyPlaceholder message="Rankings unavailable" textSecondary={textSecondary} />;
+function TeamsGridTab({ activeFormat, isDark, cardBg, borderColor, textPrimary, textSecondary }) {
+  const all = buildTeamList();
+  const international = all.filter(t => t.category === 'international');
+  const ipl           = all.filter(t => t.category === 'ipl');
+
+  const showIPL   = ['ipl', 't20', 'ipl'].includes(activeFormat);
+  const showIntl  = !showIPL || activeFormat === 't20';
+
+  const intlShow  = showIntl ? international : [];
+  const iplShow   = (activeFormat === 'ipl' || activeFormat === 't20' || activeFormat === 'ipl') ? ipl : [];
+
+  // ALL formats show both; specific formats filter
+  const showBoth  = true; // always show both sections, team detail handles format
 
   return (
     <View>
-      <Text style={[styles.sectionTitle, { color: textPrimary }]}>{teamsLabel}</Text>
-      <View style={[styles.card, { backgroundColor: cardBg, borderColor }]}>
-        <RankingsTableHeader borderColor={borderColor} textSecondary={textSecondary} />
-        {rankings.teams.map((team, idx) => (
-          <RankingRow
-            key={team.rank ?? idx}
-            team={team}
-            isLast={idx === rankings.teams.length - 1}
-            textPrimary={textPrimary}
-            textSecondary={textSecondary}
-            borderColor={borderColor}
-          />
+      <Text style={[styles.sectionTitle, { color: textPrimary }]}>International Teams</Text>
+      <View style={styles.teamGrid}>
+        {international.map(t => (
+          <TeamGridCard key={t.name} team={t} cardBg={cardBg} borderColor={borderColor} textPrimary={textPrimary} />
         ))}
       </View>
+
+      <Text style={[styles.sectionTitle, { color: textPrimary }]}>IPL Franchises</Text>
+      <View style={styles.teamGrid}>
+        {ipl.map(t => (
+          <TeamGridCard key={t.name} team={t} cardBg={cardBg} borderColor={borderColor} textPrimary={textPrimary} />
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function TeamGridCard({ team, cardBg, borderColor, textPrimary }) {
+  return (
+    <TouchableOpacity
+      style={[styles.teamCard, { backgroundColor: cardBg, borderColor }]}
+      onPress={() => router.push(`/cricket/team/${encodeURIComponent(team.name)}`)}
+      activeOpacity={0.75}
+    >
+      <View style={[styles.teamCardBadge, { backgroundColor: team.color }]}>
+        <Text style={styles.teamCardBadgeText}>{team.abbr.slice(0, 3)}</Text>
+      </View>
+      <Text style={[styles.teamCardName, { color: textPrimary }]} numberOfLines={2}>{team.name}</Text>
+    </TouchableOpacity>
+  );
+}
+
+// ─── Rankings Tab ─────────────────────────────────────────────────────────────
+
+function RankingsTab({ isDark, cardBg, borderColor, textPrimary, textSecondary }) {
+  const [rankFmt, setRankFmt] = useState('test');
+  const RANK_FORMATS = ['test', 'odi', 't20i'];
+
+  const { data, loading, error, reload } = useCricketData(
+    () => getCricketRankings(rankFmt),
+    [rankFmt],
+  );
+
+  const rankings = Array.isArray(data) ? data : data?.rankings?.teams ?? data?.teams ?? [];
+
+  return (
+    <View>
+      <View style={styles.rankFmtRow}>
+        {RANK_FORMATS.map(f => {
+          const active = rankFmt === f;
+          return (
+            <TouchableOpacity
+              key={f}
+              onPress={() => setRankFmt(f)}
+              style={[styles.rankFmtPill, { backgroundColor: active ? '#1D5C33' : cardBg, borderColor: active ? '#1D5C33' : borderColor }]}
+            >
+              <Text style={[styles.rankFmtText, { color: active ? '#FFFFFF' : textSecondary }]}>{f.toUpperCase()}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {loading ? (
+        <LoadingPlaceholder />
+      ) : error ? (
+        <ErrorPlaceholder error={error} onRetry={reload} textSecondary={textSecondary} />
+      ) : (
+        <View style={[styles.card, { backgroundColor: cardBg, borderColor }]}>
+          <View style={[styles.rankingsHeader, { borderBottomColor: borderColor }]}>
+            <Text style={[styles.rankingsHeaderText, { color: textPrimary }]}>🏆 {rankFmt.toUpperCase()} Rankings</Text>
+          </View>
+          <RankingsTableHeader borderColor={borderColor} textSecondary={textSecondary} />
+          {rankings.map((team, idx) => (
+            <RankingRow
+              key={team.rank ?? idx}
+              team={team}
+              isLast={idx === rankings.length - 1}
+              textPrimary={textPrimary}
+              textSecondary={textSecondary}
+              borderColor={borderColor}
+            />
+          ))}
+        </View>
+      )}
     </View>
   );
 }
@@ -435,10 +554,10 @@ function RankingRow({ team, isLast, textPrimary, textSecondary, borderColor }) {
     <View style={[styles.standingRow, !isLast && { borderBottomWidth: 1, borderBottomColor: borderColor }]}>
       <Text style={[styles.standingPos, { color: posColor }]}>{team.rank}</Text>
       <View style={styles.standingTeam}>
-        <View style={[styles.standingBadge, { backgroundColor: team.color || '#555' }]}>
-          <Text style={styles.standingBadgeText}>{team.short}</Text>
+        <View style={[styles.standingBadge, { backgroundColor: getTeamColor(team.name || team.team) }]}>
+          <Text style={styles.standingBadgeText}>{(team.name || team.team)?.slice(0, 2)}</Text>
         </View>
-        <Text style={[styles.standingName, { color: textPrimary }]}>{team.short}</Text>
+        <Text style={[styles.standingName, { color: textPrimary }]}>{team.name || team.team}</Text>
       </View>
       <Text style={[styles.standingRating, { color: '#F59E0B' }]}>{team.rating}</Text>
       <Text style={[styles.standingCell, { color: textPrimary, minWidth: 44 }]}>{team.points}</Text>
@@ -472,11 +591,7 @@ function LoadingCard({ cardBg, borderColor }) {
 }
 
 function LoadingPlaceholder() {
-  return (
-    <View style={styles.centeredBox}>
-      <ActivityIndicator size="large" color="#1D5C33" />
-    </View>
-  );
+  return <View style={styles.centeredBox}><ActivityIndicator size="large" color="#1D5C33" /></View>;
 }
 
 function ErrorPlaceholder({ error, onRetry, textSecondary }) {
@@ -493,11 +608,7 @@ function ErrorPlaceholder({ error, onRetry, textSecondary }) {
 }
 
 function EmptyPlaceholder({ message, textSecondary }) {
-  return (
-    <View style={styles.centeredBox}>
-      <Text style={[styles.emptyText, { color: textSecondary }]}>{message}</Text>
-    </View>
-  );
+  return <View style={styles.centeredBox}><Text style={[styles.emptyText, { color: textSecondary }]}>{message}</Text></View>;
 }
 
 function EmptyCard({ message, cardBg, borderColor, textSecondary }) {
@@ -517,79 +628,101 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 20, paddingTop: 4, paddingBottom: 10,
   },
-  headerTitle: { fontSize: 24, fontWeight: '700', color: '#FFFFFF', letterSpacing: -0.5 },
+  headerTitle:    { fontSize: 24, fontWeight: '700', color: '#FFFFFF', letterSpacing: -0.5 },
   headerSubtitle: { fontSize: 12, color: 'rgba(255,255,255,0.65)', marginTop: 2 },
   liveContainer: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: 'rgba(255,255,255,0.12)',
     paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
   },
-  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#4ADE80' },
+  liveDot:  { width: 6, height: 6, borderRadius: 3, backgroundColor: '#4ADE80' },
   liveLabel: { color: '#4ADE80', fontSize: 11, fontWeight: '700', letterSpacing: 1 },
 
   formatBarWrapper: { paddingBottom: 10 },
-  formatBar: { paddingHorizontal: 14, gap: 8, flexDirection: 'row' },
-  formatPill: { paddingHorizontal: 18, paddingVertical: 7, borderRadius: 20 },
-  formatLabel: { fontSize: 13, fontWeight: '600' },
-  formatLabelActive: { fontWeight: '700' },
+  formatBar:        { paddingHorizontal: 14, gap: 8, flexDirection: 'row' },
+  formatPill:       { paddingHorizontal: 18, paddingVertical: 7, borderRadius: 20 },
+  formatLabel:      { fontSize: 13, fontWeight: '600' },
+  formatLabelActive:{ fontWeight: '700' },
 
   tabBarWrapper: { borderBottomWidth: 1 },
-  tabBar: { paddingHorizontal: 12, paddingVertical: 8, gap: 6, flexDirection: 'row' },
-  tabPill: { paddingHorizontal: 16, paddingVertical: 7, borderRadius: 20 },
+  tabBar:        { paddingHorizontal: 12, paddingVertical: 8, gap: 6, flexDirection: 'row' },
+  tabPill:       { paddingHorizontal: 16, paddingVertical: 7, borderRadius: 20 },
   tabPillActive: { backgroundColor: '#1D5C33' },
-  tabLabel: { fontSize: 14, fontWeight: '500' },
-  tabLabelActive: { fontWeight: '600' },
+  tabLabel:      { fontSize: 14, fontWeight: '500' },
+  tabLabelActive:{ fontWeight: '600' },
 
-  contentArea: { flex: 1 },
+  contentArea:   { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 32 },
-  sectionTitle: { fontSize: 17, fontWeight: '700', marginBottom: 10, marginTop: 4 },
-  card: { borderRadius: 14, borderWidth: 1, overflow: 'hidden', marginBottom: 16 },
+  sectionTitle:  { fontSize: 17, fontWeight: '700', marginBottom: 10, marginTop: 4 },
+  card:          { borderRadius: 14, borderWidth: 1, overflow: 'hidden', marginBottom: 16 },
 
-  performersRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
-  performerCard: { flex: 1, borderRadius: 14, borderWidth: 1, padding: 14, alignItems: 'center' },
-  performerLabel: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
-  performerAvatar: { width: 50, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  // Matches tab toggle
+  viewToggleRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  viewTogglePill: { paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
+  viewToggleText: { fontSize: 14, fontWeight: '600' },
+
+  // Team grid
+  teamGrid:         { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
+  teamCard:         { width: '30%', flexGrow: 1, borderRadius: 12, borderWidth: 1, padding: 12, alignItems: 'center' },
+  teamCardBadge:    { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  teamCardBadgeText:{ color: '#FFFFFF', fontSize: 10, fontWeight: '800', letterSpacing: -0.5 },
+  teamCardName:     { fontSize: 12, fontWeight: '600', textAlign: 'center', lineHeight: 16 },
+
+  // Rankings tab
+  rankFmtRow:   { flexDirection: 'row', gap: 8, marginBottom: 14 },
+  rankFmtPill:  { flex: 1, paddingVertical: 9, borderRadius: 10, borderWidth: 1, alignItems: 'center' },
+  rankFmtText:  { fontSize: 13, fontWeight: '700' },
+  rankingsHeader: { padding: 14, borderBottomWidth: 1 },
+  rankingsHeaderText: { fontSize: 15, fontWeight: '700' },
+
+  // Performers
+  performersRow:       { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  performerCard:       { flex: 1, borderRadius: 14, borderWidth: 1, padding: 14, alignItems: 'center' },
+  performerLabel:      { fontSize: 11, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
+  performerAvatar:     { width: 50, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   performerAvatarText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
-  performerName: { fontSize: 14, fontWeight: '700', textAlign: 'center', marginBottom: 2 },
-  performerTeam: { fontSize: 12, marginBottom: 8 },
-  performerStatValue: { fontSize: 28, fontWeight: '800' },
-  performerStatLabel: { fontSize: 11, marginBottom: 4 },
-  performerSubStat: { fontSize: 11, textAlign: 'center', marginTop: 2 },
+  performerName:       { fontSize: 14, fontWeight: '700', textAlign: 'center', marginBottom: 2 },
+  performerTeam:       { fontSize: 12, marginBottom: 8 },
+  performerStatValue:  { fontSize: 28, fontWeight: '800' },
+  performerStatLabel:  { fontSize: 11, marginBottom: 4 },
+  performerSubStat:    { fontSize: 11, textAlign: 'center', marginTop: 2 },
 
-  tableHeader: { flexDirection: 'row', paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1 },
+  // Rankings table
+  tableHeader:     { flexDirection: 'row', paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1 },
   tableHeaderCell: { fontSize: 12, fontWeight: '600', textAlign: 'center', minWidth: 28 },
-  teamCol: { flex: 1, textAlign: 'left' },
-  viewAllRow: { padding: 12, borderTopWidth: 1, alignItems: 'center' },
-  viewAllText: { fontSize: 12, color: '#1D5C33', fontWeight: '500' },
+  teamCol:         { flex: 1, textAlign: 'left' },
+  viewAllRow:      { padding: 12, borderTopWidth: 1, alignItems: 'center' },
+  viewAllText:     { fontSize: 12, color: '#1D5C33', fontWeight: '500' },
 
-  standingRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 11 },
-  standingPos: { width: 28, fontSize: 13, fontWeight: '700', textAlign: 'center' },
-  standingTeam: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  standingBadge: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  standingRow:       { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 11 },
+  standingPos:       { width: 28, fontSize: 13, fontWeight: '700', textAlign: 'center' },
+  standingTeam:      { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  standingBadge:     { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   standingBadgeText: { color: '#FFFFFF', fontSize: 8, fontWeight: '800', letterSpacing: -0.5 },
-  standingName: { fontSize: 14, fontWeight: '600' },
-  standingCell: { width: 28, textAlign: 'center', fontSize: 14, fontWeight: '500' },
-  standingRating: { minWidth: 52, textAlign: 'center', fontSize: 14, fontWeight: '700' },
+  standingName:      { fontSize: 14, fontWeight: '600' },
+  standingCell:      { width: 28, textAlign: 'center', fontSize: 14, fontWeight: '500' },
+  standingRating:    { minWidth: 52, textAlign: 'center', fontSize: 14, fontWeight: '700' },
 
-  toggleWrapper: { flexDirection: 'row', borderRadius: 10, borderWidth: 1, padding: 3, marginBottom: 12 },
-  toggleOption: { flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center' },
+  // Players tab
+  toggleWrapper:      { flexDirection: 'row', borderRadius: 10, borderWidth: 1, padding: 3, marginBottom: 12 },
+  toggleOption:       { flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center' },
   toggleOptionActive: { backgroundColor: '#1D5C33' },
-  toggleOptionText: { fontSize: 14, fontWeight: '600' },
+  toggleOptionText:   { fontSize: 14, fontWeight: '600' },
   playerColHeader: {
     flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8,
     borderWidth: 1, borderTopLeftRadius: 14, borderTopRightRadius: 14, borderBottomWidth: 0, gap: 10,
   },
-  colHeaderRank: { width: 20, fontSize: 11, fontWeight: '600', textAlign: 'center' },
-  colHeaderName: { flex: 1, fontSize: 11, fontWeight: '600' },
+  colHeaderRank:  { width: 20, fontSize: 11, fontWeight: '600', textAlign: 'center' },
+  colHeaderName:  { flex: 1, fontSize: 11, fontWeight: '600' },
   colHeaderStats: { flexDirection: 'row', gap: 12 },
-  colHeaderStat: { fontSize: 11, fontWeight: '600', minWidth: 40, textAlign: 'center' },
+  colHeaderStat:  { fontSize: 11, fontWeight: '600', minWidth: 40, textAlign: 'center' },
 
   matchSourceLabel: { fontSize: 11, fontStyle: 'italic', marginBottom: 10 },
 
   loadingCard: { borderRadius: 14, borderWidth: 1, padding: 32, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   centeredBox: { padding: 40, alignItems: 'center', gap: 12 },
-  emptyBox: { borderRadius: 14, borderWidth: 1, padding: 24, alignItems: 'center', marginBottom: 16 },
-  emptyText: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
-  retryBtn: { backgroundColor: '#1D5C33', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
-  retryBtnText: { color: '#FFFFFF', fontWeight: '600', fontSize: 14 },
+  emptyBox:    { borderRadius: 14, borderWidth: 1, padding: 24, alignItems: 'center', marginBottom: 16 },
+  emptyText:   { fontSize: 14, textAlign: 'center', lineHeight: 20 },
+  retryBtn:    { backgroundColor: '#1D5C33', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
+  retryBtnText:{ color: '#FFFFFF', fontWeight: '600', fontSize: 14 },
 });

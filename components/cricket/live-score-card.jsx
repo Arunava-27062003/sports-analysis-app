@@ -95,7 +95,7 @@ export function LiveScoreCard({ match }) {
               <Text style={styles.teamBadgeText}>{team.short || teamShort(team.name)}</Text>
             </View>
             <Text style={[styles.teamLabel, { color: textSecondary }]}>
-              {team.short || teamShort(team.name)}
+              {team.name || team.short || teamShort(team.name)}
             </Text>
             {team.score ? (
               <Text style={[styles.inningsScore, { color: textPrimary }]}>
