@@ -12,6 +12,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useCricketData } from '@/hooks/use-cricket-data';
 import { getMatchScorecard } from '@/services/cricket-api';
+import { TeamAvatar } from '@/components/cricket/team-avatar';
 
 function formatMatchDate(dateStr) {
   if (!dateStr) return '—';
@@ -166,9 +167,7 @@ function TeamHeroRow({ team, isWinner, textPrimary, textSecondary }) {
   return (
     <View style={styles.teamHeroRow}>
       <View style={styles.teamHeroLeft}>
-        <View style={[styles.teamBadge, { backgroundColor: team?.color || '#555' }]}>
-          <Text style={styles.teamBadgeText}>{team?.short || '?'}</Text>
-        </View>
+        <TeamAvatar name={team?.name} size={44} />
         <View>
           <Text style={[styles.teamHeroName, { color: textPrimary }, isWinner && styles.winnerName]}>
             {team?.name || team?.short || ''}
@@ -192,11 +191,9 @@ function InningsCard({ innings, label, isDark, cardBg, innerBg, borderColor, tex
   return (
     <View style={[styles.card, { backgroundColor: cardBg, borderColor }]}>
       <View style={[styles.inningsHeader, { backgroundColor: (innings.teamColor || '#555') + '22', borderBottomColor: borderColor }]}>
-        <View style={[styles.teamBadgeSmall, { backgroundColor: innings.teamColor || '#555' }]}>
-          <Text style={styles.teamBadgeText}>{innings.teamShort || '?'}</Text>
-        </View>
+        <TeamAvatar name={innings.teamId} size={32} />
         <Text style={[styles.inningsLabel, { color: textPrimary }]}>
-          {label} · {innings.teamShort}
+          {label} · {innings.teamShort || innings.teamId}
         </Text>
         <Text style={[styles.inningsTotal, { color: textPrimary }]}>
           {innings.totalRuns}/{innings.wickets}{' '}

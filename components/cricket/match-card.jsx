@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { TeamAvatar } from './team-avatar';
 
 function formatMatchDate(dateStr) {
   if (!dateStr) return '';
@@ -75,6 +76,7 @@ export function MatchCard({ match }) {
         <TeamScoreRow
           team={match.team1}
           isWinner={team1Win}
+          isLive={isLive}
           textPrimary={textPrimary}
           textSecondary={textSecondary}
         />
@@ -82,6 +84,7 @@ export function MatchCard({ match }) {
         <TeamScoreRow
           team={match.team2}
           isWinner={team2Win}
+          isLive={isLive}
           textPrimary={textPrimary}
           textSecondary={textSecondary}
         />
@@ -104,15 +107,13 @@ export function MatchCard({ match }) {
   );
 }
 
-function TeamScoreRow({ team, isWinner, textPrimary, textSecondary }) {
+function TeamScoreRow({ team, isWinner, isLive, textPrimary, textSecondary }) {
   if (!team) return null;
   const score = team.score;
   return (
     <View style={styles.teamRow}>
       <View style={styles.teamLeft}>
-        <View style={[styles.teamBadge, { backgroundColor: team.color || '#555' }]}>
-          <Text style={styles.teamBadgeText}>{team.short || '?'}</Text>
-        </View>
+        <TeamAvatar name={team.name} size={40} />
         <Text style={[styles.teamName, { color: textPrimary }, isWinner && styles.winnerName]}>
           {team.short || team.name}
         </Text>
@@ -124,7 +125,7 @@ function TeamScoreRow({ team, isWinner, textPrimary, textSecondary }) {
           <Text style={[styles.oversText, { color: textSecondary }]}> ({score.overs})</Text>
         </Text>
       ) : (
-        <Text style={[styles.score, { color: textSecondary }]}>— / —</Text>
+        <Text style={[styles.score, { color: textSecondary }]}>{isLive ? '—' : 'Yet to bat'}</Text>
       )}
     </View>
   );

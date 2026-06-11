@@ -1,3 +1,33 @@
+const FLAG_CODES = {
+  'India': 'in',
+  'Australia': 'au',
+  'England': 'gb-eng',
+  'Pakistan': 'pk',
+  'South Africa': 'za',
+  'New Zealand': 'nz',
+  'Sri Lanka': 'lk',
+  'Bangladesh': 'bd',
+  'Afghanistan': 'af',
+  'Ireland': 'ie',
+  'Zimbabwe': 'zw',
+  'Scotland': 'gb-sct',
+  'Netherlands': 'nl',
+  'Nepal': 'np',
+  'Namibia': 'na',
+  'Jersey': 'je',
+  'Thailand': 'th',
+  'Uganda': 'ug',
+  'Canada': 'ca',
+  'USA': 'us',
+};
+
+export function getTeamFlagUrl(name) {
+  if (!name) return null;
+  const code = FLAG_CODES[name];
+  if (!code) return null;
+  return `https://flagcdn.com/w80/${code}.png`;
+}
+
 export const TEAM_COLORS = {
   'India': '#0033A0',
   'Australia': '#FFCD00',

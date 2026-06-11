@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "CricLens",
-    "slug": "criclens",
+    "name": "MatchIQ",
+    "slug": "matchiq",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "criclens",
+    "scheme": "matchiq",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.criclens.app"
+      "bundleIdentifier": "com.matchiq.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -19,7 +19,7 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "package": "com.criclens.app",
+      "package": "com.matchiq.app",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },

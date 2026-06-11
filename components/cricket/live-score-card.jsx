@@ -7,6 +7,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { TeamAvatar } from './team-avatar';
 
 // ── Lookup tables ──────────────────────────────────────────────────────────────
 
@@ -91,9 +92,7 @@ export function LiveScoreCard({ match }) {
             key={team.id ?? i}
             style={[styles.inningsRow, i > 0 && { borderTopWidth: 1, borderTopColor: borderColor }]}
           >
-            <View style={[styles.teamBadge, { backgroundColor: team.color || teamColor(team.name) }]}>
-              <Text style={styles.teamBadgeText}>{team.short || teamShort(team.name)}</Text>
-            </View>
+            <TeamAvatar name={team.name} size={36} />
             <Text style={[styles.teamLabel, { color: textSecondary }]}>
               {team.name || team.short || teamShort(team.name)}
             </Text>

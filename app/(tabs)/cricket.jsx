@@ -18,6 +18,7 @@ import { buildTeamList, getTeamColor } from '@/constants/teams';
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const FORMATS = [
+  { id: 'all',  label: 'All'         },
   { id: 'ipl',  label: 'IPL'         },
   { id: 't20i', label: 'T20I'        },
   { id: 'odi',  label: 'ODI'         },
@@ -26,6 +27,7 @@ const FORMATS = [
 ];
 
 const FORMAT_META = {
+  all:  { subtitle: 'All Formats',                   hasRankings: false, rankLabel: null   },
   ipl:  { subtitle: 'Indian Premier League',         hasRankings: false, rankLabel: null   },
   test: { subtitle: 'Test Cricket',                  hasRankings: true,  rankLabel: 'test' },
   odi:  { subtitle: 'One Day Internationals',        hasRankings: true,  rankLabel: 'odi'  },
@@ -44,7 +46,7 @@ const CONTENT_TABS = [
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function CricketScreen() {
-  const [activeFormat, setActiveFormat] = useState('ipl');
+  const [activeFormat, setActiveFormat] = useState('all');
   const [activeTab,    setActiveTab]    = useState('overview');
   const [playerMode,   setPlayerMode]   = useState('batting');
   const colorScheme = useColorScheme();
@@ -57,26 +59,27 @@ export default function CricketScreen() {
   const textSecondary = isDark ? '#8B949E' : '#687076';
   const tabBarBg      = isDark ? '#13171D' : '#FFFFFF';
 
-  const meta    = FORMAT_META[activeFormat];
-  const liveApi = useLiveMatches();
+  const meta      = FORMAT_META[activeFormat];
+  const apiFormat = activeFormat === 'all' ? null : activeFormat;
+  const liveApi   = useLiveMatches();
 
   const {
     data: recentMatches, loading: matchesLoading, error: matchesError, reload: reloadMatches,
-  } = useCricketData(() => getRecentMatches(activeFormat), [activeFormat]);
+  } = useCricketData(() => getRecentMatches(apiFormat), [activeFormat]);
 
   const {
     data: upcomingMatches, loading: upcomingLoading, error: upcomingError, reload: reloadUpcoming,
-  } = useCricketData(() => getUpcomingMatches(activeFormat), [activeFormat]);
+  } = useCricketData(() => getUpcomingMatches(apiFormat), [activeFormat]);
 
   const {
     data: playersData, loading: playersLoading, error: playersError, reload: reloadPlayers,
-  } = useCricketData(() => getTopPlayers(activeFormat), [activeFormat]);
+  } = useCricketData(() => getTopPlayers(apiFormat), [activeFormat]);
 
   const {
     data: rankingsData, loading: rankingsLoading,
   } = useCricketData(
     () => meta.hasRankings
-      ? getCricketRankings(activeFormat)
+      ? getCricketRankings(apiFormat)
       : Promise.resolve({ format: activeFormat, teams: [] }),
     [activeFormat],
   );

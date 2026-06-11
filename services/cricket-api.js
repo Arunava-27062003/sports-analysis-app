@@ -140,10 +140,11 @@ export async function getActiveSeries() {
 }
 
 // ─── Top performers for a format ─────────────────────────────────────────────
-// format: 'ipl' | 'test' | 'odi' | 't20i'
+// format: 'ipl' | 'test' | 'odi' | 't20i' | null (defaults to odi)
 
 export async function getTopPlayers(format) {
-  const data = await backendGet(`/api/cricket/topplayers/${encodeURIComponent(format)}`);
+  const fmt = format || 'odi';
+  const data = await backendGet(`/api/cricket/topplayers/${encodeURIComponent(fmt)}`);
   return data.players ?? { batting: [], bowling: [], matchTitle: '' };
 }
 

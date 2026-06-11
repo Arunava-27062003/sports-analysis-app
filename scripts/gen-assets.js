@@ -1,7 +1,7 @@
 'use strict';
 /**
  * scripts/gen-assets.js
- * Generates icon + splash PNG assets for CricLens.
+ * Generates icon + splash PNG assets for MatchIQ.
  * Pure Node.js — no npm packages needed.
  *
  * Run: node scripts/gen-assets.js
@@ -82,111 +82,61 @@ function blendOver(bg, fg, alpha) {
   ];
 }
 
-// ── CricLens icon pixel renderer ─────────────────────────────────────────────
+// ── MatchIQ icon pixel renderer ─────────────────────────────────────────────
 //
 //  Design:
-//    • Dark forest-green background
-//    • Thick white "C" arc (270° lens / scope)
-//    • Red cricket ball visible in the open gap of the "C"
-//    • White seam cross on the ball
-//    • Small white dot at center (the lens focal point)
-//    • White tip dots at both ends of the "C" arc
+//    • Dark forest-green background with subtle radial highlight
+//    • Three ascending rounded bars (analytics bar chart)
+//    • Bars increase in height left → right to convey upward trend
+
+function rrectSDF(px, py, cx, cy, bx, by, r) {
+  const dx = Math.abs(px - cx) - bx + r;
+  const dy = Math.abs(py - cy) - by + r;
+  return Math.min(Math.max(dx, dy), 0) + Math.hypot(Math.max(dx, 0), Math.max(dy, 0)) - r;
+}
 
 function iconPixel(x, y, size, transparent = false) {
   const cx = size / 2, cy = size / 2;
-  const px = x - cx,  py = y - cy;
-  const dist  = Math.hypot(px, py);
-  const angle = Math.atan2(py, px); // -π .. π
 
-  // Background
+  // Background: dark forest green
   let r = 0x0F, g = 0x2D, b = 0x1A;
   let a = transparent ? 0 : 255;
 
-  // Subtle radial vignette on background
+  // Subtle center highlight
   if (!transparent) {
-    const vigT = Math.max(0, 1 - dist / (size * 0.62));
-    r = lerp(r, 0x17, vigT * 0.6);
-    g = lerp(g, 0x40, vigT * 0.6);
-    b = lerp(b, 0x26, vigT * 0.6);
+    const dist = Math.hypot(x - cx, y - cy);
+    const vigT = Math.max(0, 1 - dist / (size * 0.60));
+    r = lerp(r, 0x18, vigT * 0.5);
+    g = lerp(g, 0x47, vigT * 0.5);
+    b = lerp(b, 0x2A, vigT * 0.5);
   }
 
-  // ── "C" arc ────────────────────────────────────────────────────────────────
-  const arcOuter   = size * 0.358;
-  const arcInner   = size * 0.240;
-  const gapHalf    = 57 * (Math.PI / 180); // half-angle of the right-side gap
-  const arcFeather = 3.0;
-  const angFeather = 5 * (Math.PI / 180);  // angular blend at gap edges
+  // ── Three ascending bars ───────────────────────────────────────────────────
+  const barHalfW = size * 0.110;
+  const barCorR  = size * 0.028;
+  const barBase  = size * 0.825;
+  const feather  = size * 0.010;
 
-  const arcMask =
-    Math.min(
-      mask(dist - arcOuter, arcFeather),  // inside outer circle
-      mask(arcInner - dist, arcFeather),  // outside inner circle
-    ) *
-    mask(gapHalf - Math.abs(angle), angFeather); // not in the gap
+  const BARS = [
+    { bx: size * 0.270, h: size * 0.300 },
+    { bx: size * 0.500, h: size * 0.510 },
+    { bx: size * 0.730, h: size * 0.720 },
+  ];
 
-  if (arcMask > 0) {
-    // Bright white arc with a subtle inner highlight
-    const highlightT = mask(dist - (arcOuter - arcFeather * 4), arcFeather * 6) * 0.15;
-    const wR = lerp(220, 255, highlightT);
-    const wG = lerp(220, 255, highlightT);
-    const wB = lerp(220, 255, highlightT);
-    r = lerp(r, wR, arcMask);
-    g = lerp(g, wG, arcMask);
-    b = lerp(b, wB, arcMask);
-    if (transparent) a = Math.round(lerp(a, 255, arcMask));
-  }
-
-  // ── Tip dots at the "C" arc ends ───────────────────────────────────────────
-  const tipR   = (arcOuter + arcInner) / 2;
-  const tipRad = (arcOuter - arcInner) / 2 + 2;
-  for (const tipAngle of [gapHalf, -gapHalf]) {
-    const tcx = cx + tipR * Math.cos(tipAngle);
-    const tcy = cy + tipR * Math.sin(tipAngle);
-    const td  = Math.hypot(x - tcx, y - tcy);
-    const tm  = mask(td - tipRad, arcFeather);
-    if (tm > 0) {
-      r = lerp(r, 255, tm);
-      g = lerp(g, 255, tm);
-      b = lerp(b, 255, tm);
-      if (transparent) a = Math.round(lerp(a, 255, tm));
+  for (const bar of BARS) {
+    const halfH = bar.h / 2;
+    const barCY = barBase - bar.h / 2;
+    const sdf   = rrectSDF(x, y, bar.bx, barCY, barHalfW, halfH, barCorR);
+    const m     = mask(sdf, feather);
+    if (m > 0) {
+      // Brighter at the top of each bar
+      const topness = Math.max(0, Math.min(1, (barBase - bar.h - y) / bar.h + 0.5));
+      const wBright = lerp(210, 255, topness * 0.5);
+      r = lerp(r, wBright, m);
+      g = lerp(g, wBright, m);
+      b = lerp(b, wBright, m);
+      if (transparent) a = Math.round(lerp(a, 255, m));
     }
-  }
-
-  // ── Cricket ball (red) in the "C" gap ─────────────────────────────────────
-  const ballCx = cx + (arcOuter + arcInner) / 2 * Math.cos(0); // right side
-  const ballCy = cy;
-  const ballR  = size * 0.060;
-  const bd     = Math.hypot(x - ballCx, y - ballCy);
-  const bm     = mask(bd - ballR, arcFeather);
-
-  if (bm > 0) {
-    r = lerp(r, 0xDC, bm);
-    g = lerp(g, 0x26, bm);
-    b = lerp(b, 0x26, bm);
-    if (transparent) a = Math.round(lerp(a, 255, bm));
-
-    // White seam lines on the ball
-    const bpx = x - ballCx, bpy = y - ballCy;
-    const seamW = size * 0.009;
-    const insideBall = bd < ballR - 2;
-    if (insideBall) {
-      const hSeam = mask(Math.abs(bpy) - seamW, 1.5) * 0.55;
-      const vSeam = mask(Math.abs(bpx) - seamW, 1.5) * 0.55;
-      const sm = Math.max(hSeam, vSeam);
-      r = lerp(r, 255, sm);
-      g = lerp(g, 255, sm);
-      b = lerp(b, 255, sm);
-    }
-  }
-
-  // ── Center focal dot ───────────────────────────────────────────────────────
-  const dotR  = size * 0.046;
-  const dotM  = mask(dist - dotR, arcFeather);
-  if (dotM > 0) {
-    r = lerp(r, 255, dotM);
-    g = lerp(g, 255, dotM);
-    b = lerp(b, 255, dotM);
-    if (transparent) a = Math.round(lerp(a, 255, dotM));
   }
 
   return [Math.round(r), Math.round(g), Math.round(b), a];
@@ -227,7 +177,7 @@ function solidRGBA(size, r, g, b, a = 255) {
 
 // ── Generate all assets ───────────────────────────────────────────────────────
 
-console.log('\nGenerating CricLens assets...\n');
+console.log('\nGenerating MatchIQ assets...\n');
 
 // icon.png — 1024×1024, opaque green background
 save('icon.png', render(1024, (x, y, s) => iconPixel(x, y, s, false)), 1024);

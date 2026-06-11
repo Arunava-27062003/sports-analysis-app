@@ -10,6 +10,7 @@ import { useCricketData } from '@/hooks/use-cricket-data';
 import { getTeamStats, getH2H } from '@/services/cricket-api';
 import { MatchCard } from '@/components/cricket/match-card';
 import { getTeamColor, getTeamAbbr, INTERNATIONAL_TEAMS, ALL_TEAMS } from '@/constants/teams';
+import { TeamAvatar } from '@/components/cricket/team-avatar';
 
 const TEAM_FORMATS = ['ALL', 'TEST', 'ODI', 'T20I', 'T20', 'IPL'];
 
@@ -82,9 +83,7 @@ export default function TeamDetailScreen() {
 
         {/* Hero card */}
         <View style={[styles.heroCard, { backgroundColor: cardBg, borderColor: `${color}55` }]}>
-          <View style={[styles.heroBadge, { backgroundColor: color }]}>
-            <Text style={styles.heroBadgeText}>{abbr}</Text>
-          </View>
+          <TeamAvatar name={teamName} size={72} />
           <View style={{ flex: 1 }}>
             <Text style={[styles.heroName, { color: textPrimary }]}>{teamName}</Text>
             <Text style={[styles.heroMeta, { color: textSecondary }]}>
@@ -294,9 +293,7 @@ export default function TeamDetailScreen() {
                   ]}
                   onPress={() => { setOpponent(item); setOpponentModalVisible(false); }}
                 >
-                  <View style={[styles.modalItemBadge, { backgroundColor: getTeamColor(item) }]}>
-                    <Text style={styles.modalItemBadgeText}>{getTeamAbbr(item)}</Text>
-                  </View>
+                  <TeamAvatar name={item} size={36} />
                   <Text style={[styles.modalItemText, { color: textPrimary }]}>{item}</Text>
                   {opponent === item && <Text style={{ color: '#4ADE80', fontWeight: '700' }}>✓</Text>}
                 </TouchableOpacity>
