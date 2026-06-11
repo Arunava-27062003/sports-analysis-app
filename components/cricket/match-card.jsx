@@ -23,6 +23,10 @@ function getWinner(result = '', team1Name = '', team2Name = '') {
   return null;
 }
 
+function getScoreFallbackLabel(status) {
+  return status === 'upcoming' ? 'Yet to bat' : '—';
+}
+
 export function MatchCard({ match }) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -76,7 +80,7 @@ export function MatchCard({ match }) {
         <TeamScoreRow
           team={match.team1}
           isWinner={team1Win}
-          isLive={isLive}
+          matchStatus={match.status}
           textPrimary={textPrimary}
           textSecondary={textSecondary}
         />
@@ -84,7 +88,7 @@ export function MatchCard({ match }) {
         <TeamScoreRow
           team={match.team2}
           isWinner={team2Win}
-          isLive={isLive}
+          matchStatus={match.status}
           textPrimary={textPrimary}
           textSecondary={textSecondary}
         />
@@ -107,7 +111,7 @@ export function MatchCard({ match }) {
   );
 }
 
-function TeamScoreRow({ team, isWinner, isLive, textPrimary, textSecondary }) {
+function TeamScoreRow({ team, isWinner, matchStatus, textPrimary, textSecondary }) {
   if (!team) return null;
   const score = team.score;
   return (
@@ -125,7 +129,9 @@ function TeamScoreRow({ team, isWinner, isLive, textPrimary, textSecondary }) {
           <Text style={[styles.oversText, { color: textSecondary }]}> ({score.overs})</Text>
         </Text>
       ) : (
-        <Text style={[styles.score, { color: textSecondary }]}>{isLive ? '—' : 'Yet to bat'}</Text>
+        <Text style={[styles.score, { color: textSecondary }]}>
+          {getScoreFallbackLabel(matchStatus)}
+        </Text>
       )}
     </View>
   );

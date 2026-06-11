@@ -44,6 +44,10 @@ function parseInningTeam(inningStr) {
   return inningStr.replace(/\s+innings?\s+\d+$/i, '').trim();
 }
 
+function getScoreFallbackLabel(status) {
+  return status === 'upcoming' ? 'Yet to bat' : '—';
+}
+
 // ── LiveScoreCard ──────────────────────────────────────────────────────────────
 // Expects the backend-transformed match shape:
 // { id, title, format, statusText, venue, team1: {name,short,color,score}, team2: {...} }
@@ -58,7 +62,7 @@ export function LiveScoreCard({ match }) {
   const textSecondary = isDark ? '#9BA1A6' : '#687076';
   const innerBg       = isDark ? '#13171D' : '#F7F9FC';
 
-  const { title = '', format = '', statusText = '', venue = '', team1, team2 } = match;
+  const { title = '', format = '', status = '', statusText = '', venue = '', team1, team2 } = match;
   const formatLabel = FORMAT_LABELS[format.toLowerCase()] ?? format.toUpperCase();
 
   const teams = [team1, team2].filter(Boolean);
@@ -104,7 +108,9 @@ export function LiveScoreCard({ match }) {
                 </Text>
               </Text>
             ) : (
-              <Text style={[styles.inningsScore, { color: textSecondary }]}>Yet to bat</Text>
+              <Text style={[styles.inningsScore, { color: textSecondary }]}>
+                {getScoreFallbackLabel(status)}
+              </Text>
             )}
           </View>
         ))}
