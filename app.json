@@ -10,7 +10,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.matchiq.app",
+      "bundleIdentifier": "com.matchiq.iem",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -22,7 +22,7 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "package": "com.matchiq.app",
+      "package": "com.matchiq.iem",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
