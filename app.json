@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "MatchIQ",
-    "slug": "matchiq",
+    "slug": "criclens",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -10,7 +10,10 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.matchiq.app"
+      "bundleIdentifier": "com.matchiq.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -50,6 +53,7 @@
       "eas": {
         "projectId": "549842fc-8f3f-4607-ae6e-b9eed1b11d7b"
       }
-    }
+    },
+    "owner": "arunava.kundu"
   }
 }
